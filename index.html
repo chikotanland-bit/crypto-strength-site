@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto & Market Strength</title>
+<style>
+body{font-family:Arial,sans-serif;background:#101827;color:#fff;margin:0;padding:20px}
+h1{font-size:25px}
+p{color:#aab7ca}
+button,select{padding:12px;border-radius:9px;border:0;margin:4px}
+button{background:#27364d;color:white}
+button.active{background:#2678ff}
+.card{background:#1b293d;padding:16px;border-radius:14px;margin:12px 0}
+canvas{width:100%;height:240px}
+</style>
+</head>
+<body>
+<h1>Crypto & Market Strength</h1>
+<p>仮想通貨・株価指数・ゴールドを比較</p>
+<div class="card">
+<label for="asset">資産を選択：</label>
+<select id="asset" onchange="draw()">
+<option>BTC/JPY</option><option>ETH/JPY</option>
+<option>XRP/JPY</option><option>NASDAQ</option>
+<option>日経平均</option><option>NYダウ</option>
+<option>ゴールド</option>
+</select>
+</div>
+<div class="card">
+<div id="periods"></div>
+<h2 id="title">BTC/JPY</h2>
+<canvas id="chart"></canvas>
+<p id="note">チャートの準備ができました</p>
+</div>
+<script>
+const periods=["10年","5年","2年","1年","6か月","3か月","1か月","5日","1日"];
+let selected="1か月";
+document.getElementById("periods").innerHTML=periods.map(p=>
+`<button class="${p===selected?'active':''}" onclick="selected='${p}';draw()">${p}</button>`
+).join("");
+function draw(){
+const asset=document.getElementById("asset").value;
+document.getElementById("title").textContent=asset+" / "+selected;
+const c=document.getElementById("chart");
+const ctx=c.getContext("2d");
+c.width=c.clientWidth*devicePixelRatio;
+c.height=240*devicePixelRatio;
+ctx.scale(devicePixelRatio,devicePixelRatio);
+ctx.clearRect(0,0,c.width,c.height);
+ctx.strokeStyle="#34465e";ctx.lineWidth=1;
+for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(0,i*45);ctx.lineTo(c.clientWidth,i*45);ctx.stroke();}
+ctx.strokeStyle="#55b8ff";ctx.lineWidth=2;ctx.beginPath();
+for(let i=0;i<60;i++){
+let x=i*(c.clientWidth/59);
+let y=115-Math.sin(i*.3)*30-Math.sin(i*.11)*40;
+if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+}
+ctx.stroke();
+document.getElementById("note").textContent="表示例（実際の価格データは未接続）";
+}
+draw();
+</script>
+</body>
+</html>
