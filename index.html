@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -5,61 +6,84 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crypto & Market Strength</title>
 <style>
-body{font-family:Arial,sans-serif;background:#101827;color:#fff;margin:0;padding:20px}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#101827;color:#fff;margin:0;padding:18px}
 h1{font-size:25px}
-p{color:#aab7ca}
-button,select{padding:12px;border-radius:9px;border:0;margin:4px}
-button{background:#27364d;color:white}
-button.active{background:#2678ff}
+p{color:#aab7ca;line-height:1.7}
 .card{background:#1b293d;padding:16px;border-radius:14px;margin:12px 0}
-canvas{width:100%;height:240px}
+button,select{padding:11px;border-radius:9px;border:0;margin:4px;background:#27364d;color:white;font-size:14px}
+button.active{background:#2678ff}
+select{max-width:100%}
+canvas{display:block;width:100%;height:260px}
+#periods{display:flex;flex-wrap:wrap;gap:3px}
+#periods button{margin:2px}
+#price{font-size:26px;font-weight:bold;color:#55b8ff}
+#note{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
 <h1>Crypto & Market Strength</h1>
-<p>仮想通貨・株価指数・ゴールドを比較</p>
+<p>暗号資産の価格を日本円で比較</p>
 <div class="card">
 <label for="asset">資産を選択：</label>
-<select id="asset" onchange="draw()">
-<option>BTC/JPY</option><option>ETH/JPY</option>
-<option>XRP/JPY</option><option>NASDAQ</option>
-<option>日経平均</option><option>NYダウ</option>
-<option>ゴールド</option>
+<select id="asset">
+<option value="bitcoin">BTC/JPY</option>
+<option value="ethereum">ETH/JPY</option>
+<option value="ripple">XRP/JPY</option>
+<option value="nasdaq">NASDAQ（未接続）</option>
+<option value="nikkei">日経平均（未接続）</option>
+<option value="dow">NYダウ（未接続）</option>
+<option value="gold">ゴールド（未接続）</option>
 </select>
 </div>
 <div class="card">
 <div id="periods"></div>
 <h2 id="title">BTC/JPY</h2>
+<div id="price">価格を取得中...</div>
 <canvas id="chart"></canvas>
-<p id="note">チャートの準備ができました</p>
+<p id="note">価格データを取得しています。</p>
+<button id="refresh">再読み込み</button>
 </div>
 <script>
-const periods=["10年","5年","2年","1年","6か月","3か月","1か月","5日","1日"];
-let selected="1か月";
-document.getElementById("periods").innerHTML=periods.map(p=>
-`<button class="${p===selected?'active':''}" onclick="selected='${p}';draw()">${p}</button>`
-).join("");
+const periods=[["10年","3650"],["5年","1825"],["2年","730"],["1年","365"],["6か月","180"],["3か月","90"],["1か月","30"],["5日","5"],["1日","1"]];
+let selected="30",chartPoints=[],requestNumber=0;
+const asset=document.getElementById("asset"),canvas=document.getElementById("chart"),ctx=canvas.getContext("2d");
+document.getElementById("periods").innerHTML=periods.map(p=>`<button type="button" data-days="${p[1]}" class="${p[1]===selected?'active':''}">${p[0]}</button>`).join("");
+document.getElementById("periods").addEventListener("click",e=>{const b=e.target.closest("button[data-days]");if(!b)return;selected=b.dataset.days;document.querySelectorAll("#periods button").forEach(x=>x.classList.toggle("active",x===b));loadData()});
+asset.addEventListener("change",loadData);
+document.getElementById("refresh").addEventListener("click",loadData);
+function formatJPY(n){return new Intl.NumberFormat("ja-JP",{style:"currency",currency:"JPY",maximumFractionDigits:2}).format(n)}
 function draw(){
-const asset=document.getElementById("asset").value;
-document.getElementById("title").textContent=asset+" / "+selected;
-const c=document.getElementById("chart");
-const ctx=c.getContext("2d");
-c.width=c.clientWidth*devicePixelRatio;
-c.height=240*devicePixelRatio;
-ctx.scale(devicePixelRatio,devicePixelRatio);
-ctx.clearRect(0,0,c.width,c.height);
-ctx.strokeStyle="#34465e";ctx.lineWidth=1;
-for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(0,i*45);ctx.lineTo(c.clientWidth,i*45);ctx.stroke();}
+const rect=canvas.getBoundingClientRect();if(!rect.width)return;
+const ratio=window.devicePixelRatio||1;canvas.width=Math.round(rect.width*ratio);canvas.height=260*ratio;ctx.setTransform(ratio,0,0,ratio,0,0);
+const w=rect.width,h=260;ctx.clearRect(0,0,w,h);ctx.strokeStyle="#34465e";ctx.lineWidth=1;
+for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(0,i*h/5);ctx.lineTo(w,i*h/5);ctx.stroke()}
+if(chartPoints.length<2)return;
+const values=chartPoints.map(p=>p[1]),min=Math.min(...values),max=Math.max(...values),range=max-min||1,pad=12;
 ctx.strokeStyle="#55b8ff";ctx.lineWidth=2;ctx.beginPath();
-for(let i=0;i<60;i++){
-let x=i*(c.clientWidth/59);
-let y=115-Math.sin(i*.3)*30-Math.sin(i*.11)*40;
-if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+chartPoints.forEach((p,i)=>{const x=pad+i*(w-2*pad)/(chartPoints.length-1),y=pad+(max-p[1])*(h-2*pad)/range;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
+ctx.stroke();ctx.fillStyle="#aab7ca";ctx.font="11px Arial";ctx.fillText(formatJPY(max),5,12);ctx.fillText(formatJPY(min),5,h-4)
 }
-ctx.stroke();
-document.getElementById("note").textContent="表示例（実際の価格データは未接続）";
+async function loadData(){
+const currentRequest=++requestNumber,id=asset.value,names={bitcoin:"BTC/JPY",ethereum:"ETH/JPY",ripple:"XRP/JPY",nasdaq:"NASDAQ",nikkei:"日経平均",dow:"NYダウ",gold:"ゴールド"};
+document.getElementById("title").textContent=names[id]+" / "+periods.find(p=>p[1]===selected)[0];
+document.getElementById("price").textContent="取得中...";document.getElementById("note").textContent="価格データを取得しています。";chartPoints=[];draw();
+if(!["bitcoin","ethereum","ripple"].includes(id)){document.getElementById("price").textContent="未接続";document.getElementById("note").textContent="この資産の実際の価格データはまだ接続されていません。";return}
+try{
+const days=Number(selected),apiDays=days>365?"max":String(days),url="https://api.coingecko.com/api/v3/coins/"+id+"/market_chart?vs_currency=jpy&days="+apiDays;
+const response=await fetch(url);if(!response.ok)throw new Error("APIエラー ("+response.status+")");
+const data=await response.json();if(currentRequest!==requestNumber)return;
+if(!Array.isArray(data.prices)||!data.prices.length)throw new Error("価格履歴がありません");
+const cutoff=Date.now()-days*86400000;
+chartPoints=data.prices.filter(p=>Array.isArray(p)&&p.length>=2&&p[0]>=cutoff).map(p=>[Number(p[0]),Number(p[1])]).filter(p=>Number.isFinite(p[0])&&Number.isFinite(p[1]));
+if(!chartPoints.length)throw new Error("指定期間のデータがありません");
+const start=chartPoints[0][1],end=chartPoints[chartPoints.length-1][1],change=(end-start)/start*100;
+document.getElementById("price").textContent=formatJPY(end);
+document.getElementById("note").textContent="実際の価格履歴。期間変化："+(change>=0?"+":"")+change.toFixed(2)+"% ・ 更新："+new Date().toLocaleString("ja-JP")+" ・ 提供元：CoinGecko";
+draw()
+}catch(error){if(currentRequest!==requestNumber)return;document.getElementById("price").textContent="取得できません";document.getElementById("note").textContent=(error.message||"通信エラー")+"。通信環境やAPIの利用制限を確認して再読み込みしてください。";chartPoints=[];draw()}
 }
-draw();
+window.addEventListener("resize",draw);loadData();
 </script>
 </body>
 </html>
